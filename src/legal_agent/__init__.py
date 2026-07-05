@@ -38,8 +38,11 @@ def review_contract(
     path: str,
     perspective: str,
     jurisdiction: str | None = None,
-    prefer_model: bool = False,
+    backend: str = "heuristic",
     api_key: str | None = None,
+    local_model: str = "llama3.1",
+    base_url: str | None = None,
+    prefer_model: bool | None = None,
 ) -> Report:
     """Run the full Phase-1 pipeline and return a :class:`Report`.
 
@@ -52,14 +55,24 @@ def review_contract(
     jurisdiction:
         Jurisdiction code (e.g. ``"US-CA"``). ``None`` means unknown, and
         jurisdiction-specific conclusions are withheld.
+    backend:
+        ``"heuristic"`` (default, offline, free), ``"local"`` (local Ollama
+        model, free, keyless), or ``"claude"`` (Anthropic API, needs a key).
+    local_model / base_url:
+        Model name and server URL for the ``"local"`` backend.
     prefer_model:
-        Use the Claude-backed analyzer when an API key is available; otherwise
-        the deterministic heuristic analyzer is used.
+        Backward-compatible alias for ``backend="claude"``.
     """
     document = load_document(path)
     clauses = extract_clauses(document)
     juris = normalize_jurisdiction(jurisdiction)
-    analyzer = get_analyzer(prefer_model=prefer_model, api_key=api_key)
+    analyzer = get_analyzer(
+        backend=backend,
+        api_key=api_key,
+        local_model=local_model,
+        base_url=base_url,
+        prefer_model=prefer_model,
+    )
 
     findings = []
     for clause in clauses:

@@ -46,8 +46,17 @@ def review(
     use_model: bool = typer.Option(
         False,
         "--use-model/--no-model",
-        help="Use the Claude-backed analyzer (needs ANTHROPIC_API_KEY). "
-        "Default is the offline heuristic analyzer.",
+        help="Use the Claude-backed analyzer (needs ANTHROPIC_API_KEY).",
+    ),
+    use_local: bool = typer.Option(
+        False,
+        "--use-local",
+        help="Use a FREE local Ollama model (no API key; needs Ollama running).",
+    ),
+    local_model: str = typer.Option(
+        "llama3.1",
+        "--local-model",
+        help="Ollama model name for --use-local (e.g. llama3.1, mistral).",
     ),
 ) -> None:
     """Review a contract and produce a risk report with citations and redlines."""
@@ -60,12 +69,21 @@ def review(
             err=True,
         )
 
+    # Pick the analysis backend. Default is the free, offline heuristic.
+    if use_model:
+        backend = "claude"
+    elif use_local:
+        backend = "local"
+    else:
+        backend = "heuristic"
+
     try:
         report = review_contract(
             file,
             perspective=side,
             jurisdiction=jurisdiction,
-            prefer_model=use_model,
+            backend=backend,
+            local_model=local_model,
         )
     except FileNotFoundError:
         typer.secho(f"File not found: {file}", fg=typer.colors.RED, err=True)

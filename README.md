@@ -44,15 +44,42 @@ For model-backed analysis, copy `.env.example` to `.env` and set
 ## Use
 
 ```bash
-# Offline heuristic analysis (default — no key needed):
+# Offline heuristic analysis (default — free, no key, nothing leaves your machine):
 legal-agent review contracts/sample_nda.pdf --side buyer --jurisdiction US-CA
 
 # Machine-readable output:
 legal-agent review contracts/sample_nda.txt --side vendor --format json -o report.json
 
-# Model-backed analysis (needs ANTHROPIC_API_KEY):
+# FREE local LLM analysis via Ollama (no API key — see "Analysis backends" below):
+legal-agent review contracts/sample_nda.txt --side buyer -j US-CA --use-local
+
+# Model-backed analysis with Claude (needs ANTHROPIC_API_KEY):
 legal-agent review contracts/sample_nda.txt --side buyer -j US-CA --use-model
 ```
+
+### Analysis backends
+
+`analyze_clause` supports three backends; the default needs no key and no network:
+
+| Backend | Flag | Cost | Key | Notes |
+|---|---|---|---|---|
+| Heuristic (default) | *(none)* | free | none | Deterministic pattern-matching against the taxonomy. Offline. |
+| Local LLM | `--use-local` | free | none | A local [Ollama](https://ollama.com) model. Data stays on your machine — good for confidential contracts. |
+| Claude | `--use-model` | paid | `ANTHROPIC_API_KEY` | Deepest, context-aware analysis via the Anthropic API. |
+
+**No API key? Use one of the two free backends.** The heuristic default works
+immediately. For a real LLM at no cost, use `--use-local` with Ollama:
+
+```bash
+# One-time setup:
+#   1. Install Ollama:  https://ollama.com/download
+#   2. Pull a model:    ollama pull llama3.1   (Ollama then serves on :11434)
+legal-agent review contract.txt --side buyer -j US-CA --use-local
+legal-agent review contract.txt --side buyer --use-local --local-model mistral
+```
+
+If Ollama isn't running, `--use-local` and `--use-model` (without a key) both
+degrade gracefully to the free heuristic analyzer rather than failing.
 
 `--side` is whose perspective to analyze from (e.g. `buyer`, `vendor`,
 `employee`, `landlord`). `--jurisdiction` is optional; when omitted or
@@ -82,13 +109,15 @@ enforceability varies.
 ## Data handling & privacy (SPEC §11)
 
 - **Local by default.** Parsing, segmentation, citation, and report assembly all
-  run locally with no network calls. The offline heuristic analyzer sends
-  nothing anywhere.
+  run locally with no network calls. The offline heuristic analyzer (and the
+  `--use-local` Ollama backend) send nothing to any third party — the local
+  backend runs the model on your own machine.
 - **What leaves your machine, only with `--use-model`.** When you pass
   `--use-model`, the text of each clause (plus the taxonomy and your chosen
   perspective/jurisdiction) is sent to the Anthropic API for that clause's
   analysis. Nothing else — no file metadata, no full document — is transmitted,
-  and results are not logged to any third party by this tool.
+  and results are not logged to any third party by this tool. `--use-local`
+  keeps everything on your machine.
 - **Never committed.** Contracts belong in a git-ignored `data/` directory and
   API keys in a git-ignored `.env`; both are excluded by `.gitignore`. Do not
   test on real client contracts — use synthetic or de-identified data.

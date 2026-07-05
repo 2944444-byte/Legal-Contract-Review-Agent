@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .analyze_clause import (
     ClaudeAnalyzer,
+    LocalModelAnalyzer,
     analyze_clause,
     get_analyzer,
     heuristic_analyze,
@@ -18,6 +19,7 @@ __all__ = [
     "analyze_clause",
     "heuristic_analyze",
     "ClaudeAnalyzer",
+    "LocalModelAnalyzer",
     "get_analyzer",
     "build_report",
     "render_markdown",

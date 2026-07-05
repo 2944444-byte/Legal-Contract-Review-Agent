@@ -148,20 +148,7 @@ class ClaudeAnalyzer:
     ) -> list[Finding]:
         client = self._get_client()
         schema_model = _ModelFindings.schema()
-        taxonomy_lines = "\n".join(
-            f"- {r.key}: {r.name} — {r.description}" for r in TAXONOMY.values()
-        )
-        juris = jurisdiction or "UNKNOWN (withhold jurisdiction-specific conclusions)"
-        user = (
-            f"Analyze the following clause from the perspective of: {perspective}.\n"
-            f"Jurisdiction: {juris}.\n\n"
-            f"Risk taxonomy (use these risk_type keys):\n{taxonomy_lines}\n\n"
-            f"Clause id: {clause.id}\n"
-            f"Clause heading: {clause.heading or '(none)'}\n"
-            f"Clause text:\n\"\"\"\n{clause.text}\n\"\"\"\n\n"
-            "Return only genuine issues for this party, each citing exact clause "
-            "text. If there are no issues, return an empty findings list."
-        )
+        user = _user_prompt(clause, perspective, jurisdiction)
         response = client.messages.parse(
             model=self.model,
             max_tokens=4096,
@@ -189,15 +176,180 @@ class ClaudeAnalyzer:
         return findings
 
 
-def get_analyzer(prefer_model: bool = False, api_key: str | None = None) -> Analyzer:
-    """Pick an analyzer.
+# ---------------------------------------------------------------------------
+# Shared prompt / schema helpers (used by both model backends)
+# ---------------------------------------------------------------------------
+def _taxonomy_lines() -> str:
+    return "\n".join(
+        f"- {r.key}: {r.name} — {r.description}" for r in TAXONOMY.values()
+    )
 
-    Uses the Claude-backed analyzer when ``prefer_model`` is set and an API key
-    is available; otherwise returns the deterministic heuristic analyzer.
+
+def _user_prompt(clause: Clause, perspective: str, jurisdiction: str | None) -> str:
+    juris = jurisdiction or "UNKNOWN (withhold jurisdiction-specific conclusions)"
+    return (
+        f"Analyze the following clause from the perspective of: {perspective}.\n"
+        f"Jurisdiction: {juris}.\n\n"
+        f"Risk taxonomy (use these risk_type keys):\n{_taxonomy_lines()}\n\n"
+        f"Clause id: {clause.id}\n"
+        f"Clause heading: {clause.heading or '(none)'}\n"
+        f"Clause text:\n\"\"\"\n{clause.text}\n\"\"\"\n\n"
+        "Return only genuine issues for this party, each citing exact clause "
+        "text. If there are no issues, return an empty findings list."
+    )
+
+
+def _findings_json_schema() -> dict:
+    """A plain JSON schema for the findings list (for non-pydantic backends)."""
+    return {
+        "type": "object",
+        "properties": {
+            "findings": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "risk_type": {"type": "string", "enum": list(TAXONOMY.keys())},
+                        "severity": {"type": "string", "enum": [s.value for s in Severity]},
+                        "rationale": {"type": "string"},
+                        "citation": {"type": "string"},
+                        "suggested_redline": {"type": "string"},
+                        "confidence": {
+                            "type": "string",
+                            "enum": [c.value for c in Confidence],
+                        },
+                    },
+                    "required": [
+                        "risk_type",
+                        "severity",
+                        "rationale",
+                        "citation",
+                        "suggested_redline",
+                        "confidence",
+                    ],
+                },
+            }
+        },
+        "required": ["findings"],
+    }
+
+
+def _coerce_findings(raw_findings: list[dict], clause: Clause) -> list[Finding]:
+    """Turn raw model dicts into validated Findings, skipping malformed ones."""
+    out: list[Finding] = []
+    for f in raw_findings:
+        try:
+            out.append(
+                Finding(
+                    risk_type=str(f["risk_type"]),
+                    severity=Severity(str(f["severity"]).lower()),
+                    rationale=str(f.get("rationale", "")),
+                    clause_id=clause.id,
+                    citation=str(f.get("citation", "")),
+                    suggested_redline=str(f.get("suggested_redline", "")),
+                    confidence=Confidence(str(f.get("confidence", "low")).lower()),
+                )
+            )
+        except (KeyError, ValueError):
+            continue  # skip a malformed finding rather than fail the clause
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Local model analyzer (Ollama / any OpenAI-free, keyless local server)
+# ---------------------------------------------------------------------------
+DEFAULT_LOCAL_MODEL = "llama3.1"
+DEFAULT_OLLAMA_URL = "http://localhost:11434"
+
+
+class LocalModelAnalyzer:
+    """Clause analysis via a local Ollama server — free and keyless.
+
+    Talks to Ollama's ``/api/chat`` endpoint (default http://localhost:11434)
+    using only the standard library, and asks for JSON matching the findings
+    schema. Nothing leaves the machine, which suits confidential contracts
+    (SPEC §11). Falls back to :func:`heuristic_analyze` if the server is
+    unreachable or returns something unusable, so the pipeline never breaks.
+
+    Setup (one time):
+        1. Install Ollama: https://ollama.com/download
+        2. Pull a model:   ollama pull llama3.1
+        3. Ollama serves automatically on http://localhost:11434
     """
-    key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-    if prefer_model and key:
-        return ClaudeAnalyzer(api_key=key)
+
+    def __init__(self, model: str = DEFAULT_LOCAL_MODEL, base_url: str | None = None):
+        self.model = model
+        raw = base_url or os.environ.get("OLLAMA_HOST") or DEFAULT_OLLAMA_URL
+        if not raw.startswith("http"):
+            raw = "http://" + raw
+        self.base_url = raw.rstrip("/")
+
+    def __call__(
+        self, clause: Clause, perspective: str, jurisdiction: str | None
+    ) -> list[Finding]:
+        try:
+            return self._analyze(clause, perspective, jurisdiction)
+        except Exception:
+            return heuristic_analyze(clause, perspective, jurisdiction)
+
+    def _analyze(
+        self, clause: Clause, perspective: str, jurisdiction: str | None
+    ) -> list[Finding]:
+        import json
+        import urllib.request
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": ANALYST_SYSTEM_PROMPT},
+                {"role": "user", "content": _user_prompt(clause, perspective, jurisdiction)},
+            ],
+            "format": _findings_json_schema(),
+            "stream": False,
+            "options": {"temperature": 0},
+        }
+        req = urllib.request.Request(
+            f"{self.base_url}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        content = data.get("message", {}).get("content", "")
+        parsed = json.loads(content)
+        return _coerce_findings(parsed.get("findings", []), clause)
+
+
+def get_analyzer(
+    backend: str = "heuristic",
+    api_key: str | None = None,
+    local_model: str = DEFAULT_LOCAL_MODEL,
+    base_url: str | None = None,
+    prefer_model: bool | None = None,
+) -> Analyzer:
+    """Pick an analyzer by backend name.
+
+    backends:
+      * ``"heuristic"`` — deterministic, offline, free, no key (default).
+      * ``"local"``     — local Ollama model, free, no key (data stays local).
+      * ``"claude"``    — Anthropic API (needs ANTHROPIC_API_KEY).
+
+    ``prefer_model=True`` is accepted for backward compatibility and maps to
+    the ``"claude"`` backend.
+    """
+    if prefer_model:
+        backend = "claude"
+    backend = (backend or "heuristic").lower()
+
+    if backend == "local":
+        return LocalModelAnalyzer(model=local_model, base_url=base_url)
+    if backend == "claude":
+        key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if key:
+            return ClaudeAnalyzer(api_key=key)
+        # No key -> degrade to the free offline analyzer rather than crash.
+        return heuristic_analyze
     return heuristic_analyze
 
 
