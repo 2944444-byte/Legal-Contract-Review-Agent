@@ -1,0 +1,19 @@
+# Legal Contract Review Agent — dependencies.
+# Install with:  pip install -r requirements.txt
+#
+# The canonical source of truth is pyproject.toml; this file mirrors it for a
+# quick, full install. For an editable/dev install prefer:  pip install -e ".[all,dev]"
+
+# --- Core (required): TXT parsing + offline heuristic analyzer + CLI ---
+pydantic>=2.6
+typer>=0.9
+
+# --- Optional: model-backed analysis (analyze_clause --use-model) ---
+anthropic>=0.40
+
+# --- Optional: non-TXT document parsing ---
+pdfplumber>=0.11      # PDF
+python-docx>=1.1      # DOCX
+
+# --- Optional: running the test suite ---
+pytest>=8.0
