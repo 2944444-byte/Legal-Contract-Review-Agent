@@ -1,0 +1,32 @@
+{# Demand letter template (SPEC §10). Phase 5 — draft only, never sent. #}
+{# The model helps with prose; this skeleton is filled deterministically from #}
+{# the `matter` object. A prominent review banner and checklist are mandatory. #}
+
+> ⚠️ **DRAFT ONLY — NOT LEGAL ADVICE. Review with a qualified lawyer in the
+> relevant jurisdiction before sending. This tool does not and will not send
+> this letter; transmitting it is your own, separate action.**
+
+{{ matter.sender_name }}
+{{ matter.sender_address }}
+
+{{ matter.date }}
+
+{{ matter.recipient_name }}
+{{ matter.recipient_address }}
+
+Re: {{ matter.subject }}
+
+Dear {{ matter.recipient_name }},
+
+{# parties / obligation / breach / demand / deadline / consequences #}
+{{ body }}
+
+Sincerely,
+{{ matter.sender_name }}
+
+---
+Review checklist before sending:
+- [ ] Verify all names, dates, and amounts
+- [ ] Confirm the governing jurisdiction and any notice requirements
+- [ ] Confirm the deadline is reasonable and correctly stated
+- [ ] Have a qualified lawyer review before sending

@@ -1,0 +1,41 @@
+{# Statement-of-claim template (SPEC §10). Phase 5 — draft only, never filed. #}
+{# Jurisdiction-appropriate skeleton filled deterministically from `matter`; #}
+{# the model helps with prose, not the legal skeleton. Placeholders remain for #}
+{# anything the tool cannot verify (dates, amounts, court details). #}
+
+> ⚠️ **DRAFT ONLY — NOT LEGAL ADVICE. Review with a qualified lawyer before
+> filing. Pleading and service rules vary by court and jurisdiction. This tool
+> does not and will not file this document; filing is your own, separate
+> action.**
+
+IN THE {{ matter.court | default("[COURT — VERIFY]") }}
+
+{{ matter.claimant_name }} (Claimant)
+v.
+{{ matter.respondent_name }} (Respondent)
+
+STATEMENT OF CLAIM
+
+1. Parties
+{{ parties }}
+
+2. Jurisdiction and Venue
+{{ jurisdiction_and_venue }}
+
+3. Facts
+{{ facts }}
+
+4. Cause(s) of Action
+{# Each cause of action mapped to its legal elements. #}
+{{ causes_of_action }}
+
+5. Relief Sought
+{{ relief_sought }}
+
+---
+Review checklist before filing:
+- [ ] Verify parties, dates, amounts, and court/venue details
+- [ ] Confirm each cause of action's elements are pleaded for this jurisdiction
+- [ ] Confirm limitation periods have not expired
+- [ ] Confirm filing and service rules for this court
+- [ ] Have a qualified lawyer review before filing

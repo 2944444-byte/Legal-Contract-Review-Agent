@@ -1,0 +1,54 @@
+MASTER SERVICES AND NON-DISCLOSURE AGREEMENT
+
+This Master Services and Non-Disclosure Agreement ("Agreement") is entered into
+between Acme Cloud Inc. ("Vendor") and the customer ("Buyer").
+
+1. Term and Renewal
+This Agreement shall commence on the Effective Date and continue for an initial
+term of one year. Thereafter it shall automatically renew for successive
+one-year terms unless either party provides written notice of non-renewal at
+least ninety (90) days before the end of the then-current term.
+
+2. Fees and Payment
+Buyer shall pay all fees within net 90 days of invoice. A late charge of 5% per
+month shall accrue on any overdue amount until paid in full.
+
+3. Limitation of Liability
+Vendor shall not be liable for any and all damages arising out of this
+Agreement. Buyer shall be liable for any and all damages, losses, and expenses
+of any kind, without limitation of liability.
+
+4. Indemnification
+Buyer shall indemnify, defend, and hold harmless Vendor from and against any and
+all claims, damages, and expenses arising out of or relating to this Agreement,
+including Vendor's own negligence.
+
+5. Intellectual Property
+Buyer hereby assigns all right, title, and interest in and to any and all
+intellectual property, work product, and materials created in connection with
+this Agreement to Vendor.
+
+6. Non-Competition
+For a period of five (5) years following termination, Buyer shall not compete
+with Vendor anywhere in the world in any line of business.
+
+7. Confidentiality
+The Receiving Party shall keep confidential all information disclosed by the
+Vendor and shall not disclose it to any third party.
+
+8. Amendments
+Vendor reserves the right to modify these terms at any time in its sole
+discretion, effective upon posting.
+
+9. Governing Law and Venue
+This Agreement shall be governed by the laws of the State of Delaware, and the
+parties submit to the exclusive jurisdiction of the courts located in Delaware.
+
+10. Dispute Resolution
+Any dispute shall be resolved by binding arbitration, and each party waives any
+right to a jury trial or to participate in a class action.
+
+11. Warranties
+The services are provided "AS IS" without warranty of any kind, and Vendor
+disclaims all warranties including any warranty of merchantability or fitness
+for a particular purpose.
